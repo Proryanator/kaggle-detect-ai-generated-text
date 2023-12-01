@@ -63,32 +63,33 @@ def drop_non_features(dataframe):
 nltk.download('punkt')
 
 # headers required: id, prompt_id, text, generated
-df = pandas.read_csv('data/competition/train_essays.csv')
+# note: assuming that 'train' and 'test' names are critical here for kaggle to be able to swap during evaluation
+train = pandas.read_csv('data/competition/train_essays.csv')
+test = pandas.read_csv('data/competition/test_essay_full.csv')
 
-# generate features and remove non-feature specific columns (leaves target)
-df = generate_features(df)
-df = drop_non_features(df)
+# generate features for training set
+train_with_features = generate_features(train)
+train_with_features = drop_non_features(train_with_features)
+test_with_features = generate_features(test)
+test_with_features = drop_non_features(test_with_features)
 
-# split features out from targets
-features = df.loc[:, df.columns != 'generated']
-target = df['generated']
+# split features out from targets for both train/test
+features_train = train_with_features.loc[:, train_with_features.columns != 'generated']
+target_train = train_with_features['generated']
+features_test = test_with_features.loc[:, test_with_features.columns != 'generated']
+target_test = test_with_features['generated']
 
 # train/test data split; always in x_train, x_test, y_train, y_test
-features_train, features_test, target_train, target_test = train_test_split(features, target, test_size=0.2, random_state=0)
+# features_train, features_test, target_train, target_test = train_test_split(features, target, test_size=0.2, random_state=0)
 
 # let's use simple logistic regression here for the first algorithm
-# note: the test dataset might be too small
 clf = LogisticRegression(random_state=0, max_iter=100).fit(features_train, target_train)
 
-# run the algorithm on subset of initial test data
-print(clf.predict(features_test))
+# print(clf.predict(features_test))
+# print(clf.score(features_test, target_test))
 
-print(clf.score(features_test, target_test))
+prediction_probabilities = clf.predict_proba(features_test)[:, 0]
+print("Prediction Probabilities:", prediction_probabilities)
 
-# TODO: re-add prompt_id values so we can store that in the output file
-
-# we'll need the prediction probabilities to be stored in the output file
-# preds_test = clf.predict_proba(features[features_test.shape[0]:])[:, 1]
-
-# TODO: output the file we'd need for submission
-# pandas.DataFrame({'id': test["id"], 'generated': preds_test}).to_csv('submission.csv', index=False)
+# output file expects the id of the prompt, plus the probability of it being generated
+pandas.DataFrame({'id': test["id"], 'generated': prediction_probabilities}).to_csv('submission.csv', index=False)
