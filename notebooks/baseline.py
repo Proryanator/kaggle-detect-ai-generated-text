@@ -20,7 +20,7 @@ train.rename(columns={'essay_id': 'id',
                       'prompt': 'prompt_id'}, inplace=True)
 train['prompt_id'] = pd.factorize(train['prompt_id'])[0]
 train = train[['id', 'prompt_id', 'text', 'generated']]
-train
+
 df = pd.concat([train['text'], test['text']], axis=0)
 vectorizer = TfidfVectorizer(stop_words='english', max_features=50000)
 X = vectorizer.fit_transform(df)

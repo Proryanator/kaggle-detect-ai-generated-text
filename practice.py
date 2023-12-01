@@ -4,7 +4,6 @@ import pandas
 from nltk import word_tokenize
 from nltk.corpus import stopwords
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
 
 
 # note: we'll want to swap these features out for ones that are more relevant/useful
@@ -46,8 +45,6 @@ def generate_features(dataframe):
     dataframe['average_sentence_length'] = dataframe['word_count'] / dataframe['sentence_count']
     dataframe['stopwords_vs_words'] = dataframe['stop_words'] / dataframe['word_count']
 
-    # shuffle the column generated to the end
-    dataframe = dataframe[[col for col in dataframe.columns if col != 'generated'] + ['generated']]
     return dataframe
 
 
@@ -55,17 +52,12 @@ def generate_features(dataframe):
 def drop_non_features(dataframe):
     dataframe = dataframe.drop(['id', 'prompt_id', 'text'], axis=1)
 
-    # move the column 'generated' to the end
     return dataframe
-
-
-# required to download a required resource for nltk
-nltk.download('punkt')
 
 # headers required: id, prompt_id, text, generated
 # note: assuming that 'train' and 'test' names are critical here for kaggle to be able to swap during evaluation
 train = pandas.read_csv('data/competition/train_essays.csv')
-test = pandas.read_csv('data/competition/test_essay_full.csv')
+test = pandas.read_csv('data/competition/test_essays.csv')
 
 # generate features for training set
 train_with_features = generate_features(train)
@@ -76,19 +68,13 @@ test_with_features = drop_non_features(test_with_features)
 # split features out from targets for both train/test
 features_train = train_with_features.loc[:, train_with_features.columns != 'generated']
 target_train = train_with_features['generated']
-features_test = test_with_features.loc[:, test_with_features.columns != 'generated']
-target_test = test_with_features['generated']
-
-# train/test data split; always in x_train, x_test, y_train, y_test
-# features_train, features_test, target_train, target_test = train_test_split(features, target, test_size=0.2, random_state=0)
 
 # let's use simple logistic regression here for the first algorithm
 clf = LogisticRegression(random_state=0, max_iter=100).fit(features_train, target_train)
 
-# print(clf.predict(features_test))
-# print(clf.score(features_test, target_test))
+print(clf.predict(test_with_features))
 
-prediction_probabilities = clf.predict_proba(features_test)[:, 0]
+prediction_probabilities = clf.predict_proba(test_with_features)[:, 0]
 print("Prediction Probabilities:", prediction_probabilities)
 
 # output file expects the id of the prompt, plus the probability of it being generated

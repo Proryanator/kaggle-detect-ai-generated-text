@@ -41,3 +41,13 @@ Can use a library called tabulate to do this:
 ```python
 print(tabulate(df.head(5), headers='keys', tablefmt='psql'))
 ```
+
+### First Time Using Kaggle Competition Notes
+
+#### Submission Errors
+Had some issues with my submission being scored, but it was due to:
+
+Not using a test dataset that is identical to the provided one (which made my code work on my own test dataset, but fail to properly generate an output file when run against the real test set).
+
+#### Internet Access Disabled (and what that means)
+Disabling internet access on the notebook doesn't necessarily mean that things that require a download won't work. So anything that needs to be downloaded in the notebook is fine (i.e. used nltk to download a tokenizer, this still worked).
