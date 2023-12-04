@@ -7,7 +7,6 @@ import nltk
 import pandas
 from matplotlib import pyplot as plt
 from sklearn.linear_model import LogisticRegression
-from word2number.w2n import word_to_num
 
 
 def count_sentences(text):
@@ -84,18 +83,6 @@ def log_zero_columns(df):
                   "] contains all zeros, suggesting to check code or omit from the final generated feature list...")
 
 
-def count_numbers_as_words(text):
-    numeric_literals = []
-
-    for word in nltk.word_tokenize(text):
-        try:
-            numeric_literals.append(word_to_num(word))
-        except ValueError:
-            pass
-
-    return len(numeric_literals)
-
-
 def plot_correlation(dataframe):
     # plot correlation between features (so we can see if we need to remove any)
     # the features do not appear to be correlated
@@ -136,7 +123,7 @@ def generate_features(df):
 
     # specific datapoints, numbers, number words, etc.
     df['non_word_numbers_count'] = text.apply(lambda x: count_literal_numeric_values(x))
-    df['number_words_count'] = text.apply(lambda x: count_numbers_as_words(x))
+    # df['number_words_count'] = text.apply(lambda x: count_numbers_as_words(x))
 
     # TODO: impute 0 values for standard deviation and difference between sentences
     # consider adding in a word to number library to count how many times word numbers are used
