@@ -171,7 +171,7 @@ train_with_features = drop_non_features(train_with_features)
 
 # plot_correlation(train_with_features)
 test_with_features = generate_features(test)
-test_with_features = drop_non_features(test_with_features).loc[:, train_with_features.columns != 'generated']
+test_with_features = drop_non_features(test_with_features)
 
 # split features out from targets for both train/test
 features_train = train_with_features.loc[:, train_with_features.columns != 'generated']
@@ -179,12 +179,12 @@ target_train = train_with_features['generated']
 
 print('Performing learning...')
 # let's use simple logistic regression here for the first algorithm
-clf = LogisticRegression(random_state=0, max_iter=100).fit(features_train, target_train)
+clf = LogisticRegression(random_state=0, max_iter=10000).fit(features_train, target_train)
 
 print("Predictions: ", clf.predict(test_with_features))
 
 prediction_probabilities = clf.predict_proba(test_with_features)[:, 0]
-print("Prediction Probabilities:", prediction_probabilities)
+print("Prediction Probabilities Mean:", mean(prediction_probabilities))
 
 # output file expects the id of the prompt, plus the probability of it being generated
 pandas.DataFrame({'id': test["id"], 'generated': prediction_probabilities}).to_csv('submission.csv', index=False)
