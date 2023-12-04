@@ -20,7 +20,12 @@ def count_words(text):
 
 def calculate_std_deviation_sentence_length(text):
     sentences = nltk.sent_tokenize(text)
-    return stdev(map(lambda s: len(s), sentences))
+    try:
+        return stdev(map(lambda s: len(s), sentences))
+    # some text that's generated may only have 1 sentence
+    except Exception:
+        # TODO: is returning 0 the right thing to do here?
+        return 0
 
 
 def calculate_sentence_length_difference_consecutively(text):
@@ -30,7 +35,12 @@ def calculate_sentence_length_difference_consecutively(text):
     for index in range(len(sentence_lengths) - 1):
         sentence_differences.append(abs(sentence_lengths[index] - sentence_lengths[index + 1]))
 
-    return mean(sentence_differences)
+    # for those sentences that only have 1 sentence
+    try:
+        return mean(sentence_differences)
+    except:
+        Exception
+    return 0
 
 
 def sentences_less_than_seven_words(text):
@@ -102,8 +112,8 @@ def generate_features(df):
 
     # AI text versus human text may contain different amounts of complex/special characters
     # note: top 2 returned all 0's on training test dataset
-    # df['parenthesis_count'] = text.apply(lambda x: (x.count("(")))
-    # df['dash_count'] = text.apply(lambda x: (x.count('-')))
+    df['parenthesis_count'] = text.apply(lambda x: (x.count("(")))
+    df['dash_count'] = text.apply(lambda x: (x.count('-')))
     df['colon_semicolon_count'] = text.apply(lambda x: (x.count(';') + x.count(':')))
     df['question_mark_count'] = text.apply(lambda x: (x.count('?')))
     df['single_quote_count'] = text.apply(lambda x: (x.count('\'')))
@@ -113,8 +123,8 @@ def generate_features(df):
     df['word_count'] = count_words(text)
     df['std_dev_sentence_length'] = text.apply(lambda x: calculate_std_deviation_sentence_length(x))
     # this feature seemed to be highly correlated with the std_dev_sentence_length, so we'll cut that one out
-    # df['sentence_length_difference_consecutive'] = text.apply(
-    #    lambda x: calculate_sentence_length_difference_consecutively(x))
+    df['sentence_length_difference_consecutive'] = text.apply(
+        lambda x: calculate_sentence_length_difference_consecutively(x))
     df['sentences_with_<_11_words'] = text.apply(lambda x: sentences_less_than_seven_words(x))
     df['sentences_with_>=_34_words'] = text.apply(lambda x: sentences_greater_than_thirty_four_words(x))
 
@@ -128,6 +138,7 @@ def generate_features(df):
     df['non_word_numbers_count'] = text.apply(lambda x: count_literal_numeric_values(x))
     df['number_words_count'] = text.apply(lambda x: count_numbers_as_words(x))
 
+    # TODO: impute 0 values for standard deviation and difference between sentences
     # consider adding in a word to number library to count how many times word numbers are used
     # might be a useful distinguishment between AI/human
     # https://pypi.org/project/word2number/
@@ -149,8 +160,8 @@ def drop_non_features(dataframe):
 
 # headers required: id, prompt_id, text, generated
 # note: assuming that 'train' and 'test' names are critical here for kaggle to be able to swap during evaluation
-train = pandas.read_csv('data/competition/train_essays.csv')
-test = pandas.read_csv('data/competition/test_essay_full.csv')
+train = pandas.read_csv('data/custom/combined/provided_train_and_mistral7bv2_training.csv')
+test = pandas.read_csv('data/custom/combined/provided_train_and_mistral7bv2_testing.csv')
 
 print('Calculating features...')
 # generate features for training set
@@ -160,7 +171,7 @@ train_with_features = drop_non_features(train_with_features)
 
 # plot_correlation(train_with_features)
 test_with_features = generate_features(test)
-test_with_features = drop_non_features(test_with_features)
+test_with_features = drop_non_features(test_with_features).loc[:, train_with_features.columns != 'generated']
 
 # split features out from targets for both train/test
 features_train = train_with_features.loc[:, train_with_features.columns != 'generated']
