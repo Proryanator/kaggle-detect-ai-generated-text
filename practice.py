@@ -170,7 +170,7 @@ clf = LogisticRegression(random_state=0, max_iter=10000).fit(features_train, tar
 
 print("Predictions: ", clf.predict(test_with_features))
 
-prediction_probabilities = clf.predict_proba(test_with_features)[:, 0]
+prediction_probabilities = clf.predict_proba(test_with_features)[:, 1]
 print("Prediction Probabilities Mean:", mean(prediction_probabilities))
 
 # output file expects the id of the prompt, plus the probability of it being generated
