@@ -1,51 +1,143 @@
-# just a practice file for reading in csv files w/ pandas and looking at it
+# some of the features below were chosen in reference to the following article:
+# https://www.sciencedirect.com/science/article/pii/S266638642300200X?via%3Dihub
+import re
+from statistics import stdev, mean
+
 import nltk
 import pandas
-from nltk import word_tokenize
-from nltk.corpus import stopwords
+from matplotlib import pyplot as plt
 from sklearn.linear_model import LogisticRegression
-
-
-# note: we'll want to swap these features out for ones that are more relevant/useful
-def get_character_count(text):
-    return len(text)
-
-
-def get_word_count(text):
-    return len(text.split())
-
-
-def count_unique_words(text):
-    return len(set(text.split()))
-
-
-def count_stopwords(text):
-    stop_words = set(stopwords.words('english'))
-    word_tokens = word_tokenize(text)
-    stopwords_x = [w for w in word_tokens if w in stop_words]
-    return len(stopwords_x)
-
-
-def count_capital_words(text):
-    return sum(map(str.isupper,text.split()))
+from word2number.w2n import word_to_num
 
 
 def count_sentences(text):
     return len(nltk.sent_tokenize(text))
 
 
-def generate_features(dataframe):
-    dataframe['char_count'] = dataframe['text'].apply(lambda x: get_character_count(x))
-    dataframe['word_count'] = dataframe['text'].apply(lambda x: get_word_count(x))
-    dataframe['unique_words'] = dataframe['text'].apply(lambda x: count_unique_words(x))
-    dataframe['stop_words'] = dataframe['text'].apply(lambda x: count_unique_words(x))
-    dataframe['capital_words'] = dataframe['text'].apply(lambda x: count_capital_words(x))
-    dataframe['sentence_count'] = dataframe['text'].apply(lambda x: count_sentences(x))
-    dataframe['average_word_length'] = dataframe['char_count'] / dataframe['word_count']
-    dataframe['average_sentence_length'] = dataframe['word_count'] / dataframe['sentence_count']
-    dataframe['stopwords_vs_words'] = dataframe['stop_words'] / dataframe['word_count']
+def count_words(text):
+    return text.apply(lambda x: len(nltk.word_tokenize(x)))
 
-    return dataframe
+
+def calculate_std_deviation_sentence_length(text):
+    sentences = nltk.sent_tokenize(text)
+    return stdev(map(lambda s: len(s), sentences))
+
+
+def calculate_sentence_length_difference_consecutively(text):
+    sentences = nltk.sent_tokenize(text)
+    sentence_lengths = list(map(lambda s: len(nltk.word_tokenize(s)), sentences))
+    sentence_differences = []
+    for index in range(len(sentence_lengths) - 1):
+        sentence_differences.append(abs(sentence_lengths[index] - sentence_lengths[index + 1]))
+
+    return mean(sentence_differences)
+
+
+def sentences_less_than_seven_words(text):
+    sentences = nltk.sent_tokenize(text)
+    word_counts = list(map(lambda x: len(nltk.word_tokenize(x)), sentences))
+    return len(list(filter(lambda count: count < 7, word_counts)))
+
+
+def sentences_greater_than_thirty_four_words(text):
+    sentences = nltk.sent_tokenize(text)
+    word_counts = list(map(lambda x: len(nltk.word_tokenize(x)), sentences))
+    return len(list(filter(lambda count: count >= 34, word_counts)))
+
+
+def count_literal_numeric_values(text):
+    return len(re.findall(r'\b\d+\b', text))
+
+
+def count_word_occurrence(text, word):
+    return nltk.Counter(nltk.word_tokenize(text.lower()))[word]
+
+
+def generate_word_counts_for(text, words_of_interest):
+    counts = text.apply(lambda x: nltk.Counter(nltk.word_tokenize(x.lower()))).apply(
+        lambda counter: get_array_of_counts(counter, words_of_interest))
+    return pandas.DataFrame(list(counts), columns=words_of_interest)
+
+
+def get_array_of_counts(counter, words_of_interest):
+    word_to_count = {}
+    for word in words_of_interest:
+        word_to_count[word] = counter[word]
+
+    return word_to_count
+
+
+def log_zero_columns(df):
+    for columnName in df:
+        if (df[columnName] == 0).all():
+            print("Column [", columnName,
+                  "] contains all zeros, suggesting to check code or omit from the final generated feature list...")
+
+
+def count_numbers_as_words(text):
+    numeric_literals = []
+
+    for word in nltk.word_tokenize(text):
+        try:
+            numeric_literals.append(word_to_num(word))
+        except ValueError:
+            pass
+
+    return len(numeric_literals)
+
+
+def plot_correlation(dataframe):
+    # plot correlation between features (so we can see if we need to remove any)
+    # the features do not appear to be correlated
+    corr = dataframe.corr()
+    fig, ax = plt.subplots(figsize=(len(corr.columns), len(corr.columns)))
+    ax.matshow(corr)
+    plt.xticks(range(len(corr.columns)), corr.columns)
+    plt.yticks(range(len(corr.columns)), corr.columns)
+    plt.show()
+
+
+def generate_features(df):
+    text = df['text']
+
+    # AI text versus human text may contain different amounts of complex/special characters
+    # note: top 2 returned all 0's on training test dataset
+    # df['parenthesis_count'] = text.apply(lambda x: (x.count("(")))
+    # df['dash_count'] = text.apply(lambda x: (x.count('-')))
+    df['colon_semicolon_count'] = text.apply(lambda x: (x.count(';') + x.count(':')))
+    df['question_mark_count'] = text.apply(lambda x: (x.count('?')))
+    df['single_quote_count'] = text.apply(lambda x: (x.count('\'')))
+
+    # sentence counts, lengths, and other stats may be different
+    df['sentence_count'] = text.apply(lambda x: count_sentences(x))
+    df['word_count'] = count_words(text)
+    df['std_dev_sentence_length'] = text.apply(lambda x: calculate_std_deviation_sentence_length(x))
+    # this feature seemed to be highly correlated with the std_dev_sentence_length, so we'll cut that one out
+    # df['sentence_length_difference_consecutive'] = text.apply(
+    #    lambda x: calculate_sentence_length_difference_consecutively(x))
+    df['sentences_with_<_11_words'] = text.apply(lambda x: sentences_less_than_seven_words(x))
+    df['sentences_with_>=_34_words'] = text.apply(lambda x: sentences_greater_than_thirty_four_words(x))
+
+    # specific words may tend to appear more in AI versus human written
+    # note: we may want to choose different words based on the domain of the essay (to make this model generalized?)
+    # very important that we lowercase the text before this step, as nltk's word counter does not do this for you
+    words_of_interest = ['although', 'however', 'but', 'because', 'et', 'researchers', 'others']
+    df.join(generate_word_counts_for(text, words_of_interest))
+
+    # specific datapoints, numbers, number words, etc.
+    df['non_word_numbers_count'] = text.apply(lambda x: count_literal_numeric_values(x))
+    df['number_words_count'] = text.apply(lambda x: count_numbers_as_words(x))
+
+    # consider adding in a word to number library to count how many times word numbers are used
+    # might be a useful distinguishment between AI/human
+    # https://pypi.org/project/word2number/
+    # TODO: we can potentially augment/use frequency distribution as well on the above words
+
+    # TODO: if we add features for root words, or whatnot, let's add stemming, lemmatization, etc
+
+    log_zero_columns(df)
+
+    return df
 
 
 # removes all columns not related to the features or the target
@@ -54,14 +146,19 @@ def drop_non_features(dataframe):
 
     return dataframe
 
+
 # headers required: id, prompt_id, text, generated
 # note: assuming that 'train' and 'test' names are critical here for kaggle to be able to swap during evaluation
 train = pandas.read_csv('data/competition/train_essays.csv')
-test = pandas.read_csv('data/competition/test_essays.csv')
+test = pandas.read_csv('data/competition/test_essay_full.csv')
 
+print('Calculating features...')
 # generate features for training set
+# note: recent addition of features slows this down, performance improvements needed
 train_with_features = generate_features(train)
 train_with_features = drop_non_features(train_with_features)
+
+# plot_correlation(train_with_features)
 test_with_features = generate_features(test)
 test_with_features = drop_non_features(test_with_features)
 
@@ -69,10 +166,11 @@ test_with_features = drop_non_features(test_with_features)
 features_train = train_with_features.loc[:, train_with_features.columns != 'generated']
 target_train = train_with_features['generated']
 
+print('Performing learning...')
 # let's use simple logistic regression here for the first algorithm
 clf = LogisticRegression(random_state=0, max_iter=100).fit(features_train, target_train)
 
-print(clf.predict(test_with_features))
+print("Predictions: ", clf.predict(test_with_features))
 
 prediction_probabilities = clf.predict_proba(test_with_features)[:, 0]
 print("Prediction Probabilities:", prediction_probabilities)
