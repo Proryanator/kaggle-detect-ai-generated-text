@@ -147,8 +147,8 @@ def drop_non_features(dataframe):
 
 # headers required: id, prompt_id, text, generated
 # note: assuming that 'train' and 'test' names are critical here for kaggle to be able to swap during evaluation
-train = pandas.read_csv('data/custom/combined/provided_train_and_mistral7bv2_training.csv')
-test = pandas.read_csv('data/custom/combined/provided_train_and_mistral7bv2_testing.csv')
+train = pandas.read_csv('data/custom/combined/daigt-train.csv')
+test = pandas.read_csv('data/custom/combined/daigt-test.csv')
 
 print('Calculating features...')
 # generate features for training set
